@@ -1,0 +1,23 @@
+{
+  "name": "desktopaccountingapi-examples-node",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Runnable Desktop Accounting API examples for Node.js (TypeScript, run with Node.js type stripping).",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "check": "node scripts/check.mjs",
+    "use-local-sdk": "node scripts/use-local-sdk.mjs",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@desktopaccountingapi/quickbooks-desktop": "^0.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.1",
+    "typescript": "7.0.2"
+  }
+}

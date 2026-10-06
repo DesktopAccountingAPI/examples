@@ -1,0 +1,44 @@
+<Project>
+  <!--
+    Shared settings for the .NET examples.
+
+    By default each example references the SDK source checked out next to this repository:
+      $(SDK_REPOS_DIR)/quickbooks-desktop-dotnet   (environment variable), else
+      <examples repo root>/sdk/quickbooks-desktop-dotnet
+    Override with -p:SdkReposDir=/path/to/sdk-repos.
+
+    To build against the NuGet package instead: -p:UseNuGetPackage=true (version: -p:DaapiPackageVersion=0.1.0).
+  -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <LangVersion>12</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <IsPackable>false</IsPackable>
+    <RootNamespace>Examples</RootNamespace>
+
+    <SdkReposDir Condition="'$(SdkReposDir)' == '' and '$(SDK_REPOS_DIR)' != ''">$(SDK_REPOS_DIR)</SdkReposDir>
+    <SdkReposDir Condition="'$(SdkReposDir)' == ''">$(MSBuildThisFileDirectory)../sdk</SdkReposDir>
+    <DaapiSdkProject>$([MSBuild]::NormalizePath('$(SdkReposDir)', 'quickbooks-desktop-dotnet', 'src', 'DesktopAccountingApi.QuickBooksDesktop', 'DesktopAccountingApi.QuickBooksDesktop.csproj'))</DaapiSdkProject>
+    <UseNuGetPackage Condition="'$(UseNuGetPackage)' == ''">false</UseNuGetPackage>
+    <DaapiPackageVersion Condition="'$(DaapiPackageVersion)' == ''">0.1.0</DaapiPackageVersion>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(UseNuGetPackage)' != 'true'">
+    <ProjectReference Include="$(DaapiSdkProject)" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(UseNuGetPackage)' == 'true'">
+    <PackageReference Include="DesktopAccountingAPI.QuickBooksDesktop" Version="$(DaapiPackageVersion)" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)common/*.cs" Link="common/%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <Target Name="CheckDaapiSdkCheckout" BeforeTargets="ResolveProjectReferences;CollectPackageReferences" Condition="'$(UseNuGetPackage)' != 'true' and !Exists('$(DaapiSdkProject)')">
+    <Error Text="The .NET SDK is not checked out at $(DaapiSdkProject). Clone quickbooks-desktop-dotnet into $(SdkReposDir), set SDK_REPOS_DIR, or build with -p:UseNuGetPackage=true." />
+  </Target>
+</Project>

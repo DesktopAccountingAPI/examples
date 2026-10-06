@@ -1,0 +1,97 @@
+[tools]
+node = "24.20.0"
+python = "3.14.7"
+uv = "0.12.23"
+dotnet = "8.0.425"
+java = "temurin-21.0.12+8.0.LTS"
+maven = "3.9.16"
+
+[env]
+DOTNET_CLI_TELEMETRY_OPTOUT = "1"
+DOTNET_NOLOGO = "1"
+
+# Every example in every language must build/type-check against the SDK checkouts in
+# SDK_REPOS_DIR (default ./sdk). No task calls the API.
+
+[tasks."check:node"]
+description = "Build the local Node SDK and type-check the Node examples against it"
+shell = "bash -c"
+run = '''
+set -euo pipefail
+SDK_REPOS_DIR="${SDK_REPOS_DIR:-$PWD/sdk}"
+(cd "$SDK_REPOS_DIR/quickbooks-desktop-node" && npm ci --no-audit --no-fund)
+(cd node && SDK_REPOS_DIR="$SDK_REPOS_DIR" node scripts/check.mjs)
+'''
+
+[tasks."check:java"]
+description = "Install the local Java SDK and compile the Java examples against it"
+shell = "bash -c"
+run = '''
+set -euo pipefail
+SDK_REPOS_DIR="${SDK_REPOS_DIR:-$PWD/sdk}"
+mvn -B -ntp -f "$SDK_REPOS_DIR/quickbooks-desktop-java/pom.xml" install -DskipTests -Dmaven.javadoc.skip=true -Dmaven.source.skip=true
+mvn -B -ntp -f java/pom.xml compile
+(cd java && PORT=18471 DAAPI_WEBHOOK_SECRET=whsec_Y29uZm9ybWFuY2Utd2ViaG9vay1zZWNyZXQtMzJieXQ= mvn -B -ntp -q exec:java -Dexec.mainClass=examples.AsyncWebhooks -Dexec.args=--self-test)
+'''
+
+[tasks."check:python"]
+description = "Type-check the Python examples against the local Python SDK"
+shell = "bash -c"
+run = '''
+set -euo pipefail
+SDK_REPOS_DIR="${SDK_REPOS_DIR:-$PWD/sdk}"
+(cd python && SDK_REPOS_DIR="$SDK_REPOS_DIR" python check.py)
+'''
+
+[tasks."check:dotnet"]
+description = "Build the .NET examples against the local .NET SDK"
+shell = "bash -c"
+run = '''
+set -euo pipefail
+SDK_REPOS_DIR="${SDK_REPOS_DIR:-$PWD/sdk}"
+SDK_REPOS_DIR="$SDK_REPOS_DIR" dotnet build dotnet/examples.sln -c Release
+PORT=18472 DAAPI_WEBHOOK_SECRET=whsec_Y29uZm9ybWFuY2Utd2ViaG9vay1zZWNyZXQtMzJieXQ= dotnet run --project dotnet/async-webhooks -c Release --no-build -- --self-test
+'''
+
+[tasks.check]
+description = "Build or type-check every example in every language"
+depends = ["check:node", "check:python", "check:dotnet", "check:java"]
+
+# Registry mode (CI): the same checks against the released packages from npm, PyPI, NuGet and
+# Maven Central, at the version pinned in each language folder. Needs no SDK checkouts.
+
+[tasks."registry:node"]
+shell = "bash -c"
+run = '''
+set -euo pipefail
+cd node && npm install --no-audit --no-fund && npx tsc -p tsconfig.json && node async-webhooks.ts --self-test
+'''
+
+[tasks."registry:python"]
+shell = "bash -c"
+run = '''
+set -euo pipefail
+cd python && uv venv --quiet --allow-existing .venv && uv pip install --quiet --python .venv/bin/python -r requirements.txt mypy==1.19.1
+.venv/bin/python -m mypy --strict async_webhooks.py common.py create_invoice.py error_handling.py network_drop.py quickstart.py sync_customers.py
+.venv/bin/python async_webhooks.py --self-test
+'''
+
+[tasks."registry:dotnet"]
+shell = "bash -c"
+run = '''
+set -euo pipefail
+dotnet build dotnet/examples.sln -c Release -p:UseNuGetPackage=true
+PORT=18472 DAAPI_WEBHOOK_SECRET=whsec_Y29uZm9ybWFuY2Utd2ViaG9vay1zZWNyZXQtMzJieXQ= dotnet run --project dotnet/async-webhooks -c Release --no-build -p:UseNuGetPackage=true -- --self-test
+'''
+
+[tasks."registry:java"]
+shell = "bash -c"
+run = '''
+set -euo pipefail
+mvn -B -ntp -f java/pom.xml compile
+(cd java && PORT=18471 DAAPI_WEBHOOK_SECRET=whsec_Y29uZm9ybWFuY2Utd2ViaG9vay1zZWNyZXQtMzJieXQ= mvn -B -ntp -q exec:java -Dexec.mainClass=examples.AsyncWebhooks -Dexec.args=--self-test)
+'''
+
+[tasks."check:registry"]
+description = "Build or type-check every example against the released registry packages"
+depends = ["registry:node", "registry:python", "registry:dotnet", "registry:java"]
