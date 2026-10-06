@@ -9,7 +9,7 @@ return await Env.Run(async () =>
     var health = await client.Qbd.HealthCheckAsync();
     Console.WriteLine($"QuickBooks: {health.Quickbooks.CompanyName} ({health.Quickbooks.Product}), round trip {health.Duration} ms");
 
-    var page = await client.Qbd.Invoices.ListAsync(new InvoiceListParams { Limit = 10, IncludeLineItems = false }).GetFirstPageAsync();
+    var page = await client.Qbd.Invoices.ListAsync(new InvoiceListParams { Limit = 10 }).GetFirstPageAsync();
     Console.WriteLine($"First {page.Data.Count} invoices (request {page.RequestId}):");
     foreach (var invoice in page.Data)
     {
