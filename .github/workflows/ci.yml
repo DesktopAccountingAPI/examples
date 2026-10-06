@@ -1,0 +1,25 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    # Weekly: the released SDK packages still build every example.
+    - cron: "41 6 * * 1"
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Build and type-check all examples against the released packages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: jdx/mise-action@v5
+      # The examples pin the released SDK version (npm, PyPI, NuGet, Maven Central), so CI needs no
+      # access to the private SDK repositories. `mise run check` (SDK checkouts in ./sdk) is the
+      # pre-release variant that the platform repository's generator check runs.
+      - run: mise run check:registry

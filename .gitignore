@@ -1,0 +1,27 @@
+# SDK checkouts (see README)
+/sdk/
+
+# Node.js
+node_modules/
+dist/
+*.tsbuildinfo
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.mypy_cache/
+.ruff_cache/
+
+# .NET
+bin/
+obj/
+*.user
+nupkgs/
+
+# Java
+target/
+
+# Local environment
+.env
+.env.*

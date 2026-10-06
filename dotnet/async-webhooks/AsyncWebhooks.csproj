@@ -1,0 +1,3 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Settings and the SDK reference come from ../Directory.Build.props. -->
+</Project>
