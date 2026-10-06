@@ -72,8 +72,12 @@ def receive() -> None:
         server.server_close()
 
 
+# Self-test secret when DAAPI_WEBHOOK_SECRET is not set (base64 of 32 bytes, Standard Webhooks format).
+SAMPLE_SECRET = "whsec_c2VsZi10ZXN0LXNlY3JldC1ub3QtZm9yLXByb2R1Y3Rpb24="
+
+
 def self_test() -> None:
-    secret = require_env("DAAPI_WEBHOOK_SECRET")
+    secret = os.environ.get("DAAPI_WEBHOOK_SECRET") or SAMPLE_SECRET
     body = json.dumps(
         {
             "id": "evt_selftest",

@@ -19,7 +19,7 @@ def main() -> None:
         print(f"First {len(page.data)} invoices (more: {page.has_more}):")
         for invoice in page.data:
             customer = invoice.customer.full_name if invoice.customer else "-"
-            print(f"  {invoice.ref_number or '-':<12} {invoice.transaction_date}  {customer:<30} {invoice.subtotal}")
+            print(f"  {invoice.ref_number or '-':<12} {invoice.transaction_date or '-'}  {customer:<30} {invoice.subtotal}")
 
 
 if __name__ == "__main__":
