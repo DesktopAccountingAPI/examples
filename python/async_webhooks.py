@@ -3,7 +3,7 @@ that verifies Standard Webhooks signatures with the SDK helper.
 
 python async_webhooks.py               # async-mode create, waits on the request handle, voids the invoice
 python async_webhooks.py --receive     # webhook receiver on PORT (default 8080)
-python async_webhooks.py --self-test   # signs and verifies a sample event locally; needs no API key
+python async_webhooks.py --self-test   # signs and verifies a sample event locally (DAAPI_WEBHOOK_SECRET or a sample secret); needs no API key
 """
 
 from __future__ import annotations
@@ -19,6 +19,9 @@ from common import invoice_parties, make_client, require_env, run_id
 
 from desktopaccountingapi import WebhookVerificationError, webhooks
 from desktopaccountingapi.types import InvoiceLineCreateInput
+
+# Self-test secret when DAAPI_WEBHOOK_SECRET is not set (base64 of 32 bytes, Standard Webhooks format).
+SAMPLE_SECRET = "whsec_c2VsZi10ZXN0LXNlY3JldC1ub3QtZm9yLXByb2R1Y3Rpb24="
 
 
 def enqueue_invoice() -> None:
@@ -70,10 +73,6 @@ def receive() -> None:
         server.serve_forever()
     except KeyboardInterrupt:
         server.server_close()
-
-
-# Self-test secret when DAAPI_WEBHOOK_SECRET is not set (base64 of 32 bytes, Standard Webhooks format).
-SAMPLE_SECRET = "whsec_c2VsZi10ZXN0LXNlY3JldC1ub3QtZm9yLXByb2R1Y3Rpb24="
 
 
 def self_test() -> None:
