@@ -1,6 +1,6 @@
 // sync-customers: read every customer, 10 per page, and check that no ID repeats.
 //
-//   dotnet run --project sync-customers              fast: the SDK's read-ahead keeps the cursor alive
+//   dotnet run --project sync-customers              fast: each page is requested well inside the cursor idle window
 //   dotnet run --project sync-customers -- --slow    sleeps past the cursor idle window after each page
 //                                                    (SLOW_PAGE_SECONDS, default 15) to provoke
 //                                                    CursorExpiredException, then resumes from a watermark
