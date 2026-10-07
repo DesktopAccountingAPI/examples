@@ -1,6 +1,6 @@
 # Java examples
 
-Runnable programs for the [Desktop Accounting API Java SDK](https://github.com/DesktopAccountingAPI/quickbooks-desktop-java) (`com.desktopaccountingapi:quickbooks-desktop:0.1.1`).
+Runnable programs for the [Desktop Accounting API Java SDK](https://github.com/DesktopAccountingAPI/quickbooks-desktop-java) (`com.desktopaccountingapi:quickbooks-desktop:0.2.0`).
 
 | Class | What it does |
 | --- | --- |
@@ -18,7 +18,7 @@ Runnable programs for the [Desktop Accounting API Java SDK](https://github.com/D
 
 ## The SDK
 
-`pom.xml` depends on `com.desktopaccountingapi:quickbooks-desktop:0.1.1`. Maven resolves it from Maven Central, or from your local repository (`~/.m2`) after you install the SDK checkout next to this repository:
+`pom.xml` depends on `com.desktopaccountingapi:quickbooks-desktop:0.2.0`. Maven resolves it from Maven Central, or from your local repository (`~/.m2`) after you install the SDK checkout next to this repository:
 
 ```sh
 SDK_REPOS_DIR="${SDK_REPOS_DIR:-$PWD/sdk}"          # from the examples repository root
