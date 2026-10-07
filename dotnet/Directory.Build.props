@@ -23,7 +23,7 @@
     <SdkReposDir Condition="'$(SdkReposDir)' == ''">$(MSBuildThisFileDirectory)../sdk</SdkReposDir>
     <DaapiSdkProject>$([MSBuild]::NormalizePath('$(SdkReposDir)', 'quickbooks-desktop-dotnet', 'src', 'DesktopAccountingApi.QuickBooksDesktop', 'DesktopAccountingApi.QuickBooksDesktop.csproj'))</DaapiSdkProject>
     <UseNuGetPackage Condition="'$(UseNuGetPackage)' == ''">false</UseNuGetPackage>
-    <DaapiPackageVersion Condition="'$(DaapiPackageVersion)' == ''">0.2.0</DaapiPackageVersion>
+    <DaapiPackageVersion Condition="'$(DaapiPackageVersion)' == ''">0.2.1</DaapiPackageVersion>
   </PropertyGroup>
 
   <ItemGroup Condition="'$(UseNuGetPackage)' != 'true'">
