@@ -3,7 +3,7 @@
     Shared settings for the .NET examples.
 
     By default each example references the released DesktopAccountingAPI.QuickBooksDesktop package
-    from NuGet, version 0.3.0 (another version: -p:DaapiPackageVersion=<version>).
+    from NuGet, version 0.4.0 (another version: -p:DaapiPackageVersion=<version>).
 
     For SDK development, build against the SDK source checked out next to this repository with
     -p:UseNuGetPackage=false:
@@ -25,7 +25,7 @@
     <SdkReposDir Condition="'$(SdkReposDir)' == ''">$(MSBuildThisFileDirectory)../sdk</SdkReposDir>
     <DaapiSdkProject>$([MSBuild]::NormalizePath('$(SdkReposDir)', 'quickbooks-desktop-dotnet', 'src', 'DesktopAccountingApi.QuickBooksDesktop', 'DesktopAccountingApi.QuickBooksDesktop.csproj'))</DaapiSdkProject>
     <UseNuGetPackage Condition="'$(UseNuGetPackage)' == ''">true</UseNuGetPackage>
-    <DaapiPackageVersion Condition="'$(DaapiPackageVersion)' == ''">0.3.0</DaapiPackageVersion>
+    <DaapiPackageVersion Condition="'$(DaapiPackageVersion)' == ''">0.4.0</DaapiPackageVersion>
   </PropertyGroup>
 
   <ItemGroup Condition="'$(UseNuGetPackage)' != 'true'">
