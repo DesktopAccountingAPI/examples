@@ -12,13 +12,19 @@ import java.util.Set;
  * Auto-paginates every customer, 10 per page, and checks that no ID repeats.
  *
  * <p>{@code --slow [seconds]} waits after each page (default 15 s, longer than the cursor idle
- * window) to provoke {@link CursorExpiredException}, prints its progress fields and resumes from an
- * {@code updatedAfter} watermark.
+ * window) to provoke {@link CursorExpiredException}, prints its progress fields, then restarts the
+ * list and skips IDs it already has. It does not resume from {@code lastUpdatedAt}: QuickBooks
+ * returns records in its own order, not by {@code updatedAt}, so unread records can be older than
+ * the last one read.
  */
 public final class SyncCustomers {
     private SyncCustomers() {}
 
-    public static void main(String[] args) throws InterruptedException {
+    public static void main(String[] args) {
+        Env.run(() -> sync(args));
+    }
+
+    private static void sync(String[] args) throws InterruptedException {
         DesktopAccountingApiClient client = Env.client();
         int slowSeconds = 0;
         for (int i = 0; i < args.length; i++) {
@@ -53,13 +59,13 @@ public final class SyncCustomers {
             System.out.println("  pagesServed   " + e.pagesServed());
             System.out.println("  lastId        " + e.lastId());
             System.out.println("  lastUpdatedAt " + e.lastUpdatedAt());
+            System.out.println("  requestId     " + e.requestId());
             System.out.println("  fixes         " + e.fixes());
-            // Resume: everything modified since the last item we saw. Records may repeat; dedupe by ID.
-            CustomerListParams resume = new CustomerListParams().limit(10);
-            if (e.lastUpdatedAt() != null) resume.updatedAfter(e.lastUpdatedAt());
+            // Restart the same query (an incremental sync would restart from its saved updatedAfter
+            // watermark) and skip the IDs already seen.
             int before = ids.size();
-            for (Customer c : client.qbd().customers().list(resume)) ids.add(c.id());
-            System.out.println("Resumed from " + e.lastUpdatedAt() + ": " + (ids.size() - before) + " more, " + ids.size() + " unique customers");
+            for (Customer c : client.qbd().customers().list(new CustomerListParams().limit(10))) ids.add(c.id());
+            System.out.println("Restarted the list: " + (ids.size() - before) + " more, " + ids.size() + " unique customers");
         }
     }
 }

@@ -1,7 +1,7 @@
 // async-webhooks: queue an invoice create in async mode, wait on the request handle, and run a
 // minimal webhook receiver that verifies Standard Webhooks signatures with the SDK.
 //
-//   dotnet run --project async-webhooks                 enqueue + wait (DAAPI_SECRET_KEY, DAAPI_END_USER_ID)
+//   dotnet run --project async-webhooks                 enqueue + wait, then void the invoice (DAAPI_SECRET_KEY, DAAPI_END_USER_ID)
 //   dotnet run --project async-webhooks -- --receive    webhook receiver on PORT (default 8080), DAAPI_WEBHOOK_SECRET
 //   dotnet run --project async-webhooks -- --self-test  sign a sample event with DAAPI_WEBHOOK_SECRET and verify it locally
 using System.Net;
@@ -25,12 +25,11 @@ return await Env.Run(async () =>
 
     var runId = Env.RunId(args);
     using var client = Env.Client();
-    var customers = await client.Qbd.Customers.ListAsync(new CustomerListParams { Limit = 1 }).GetFirstPageAsync();
-    if (customers.Data.Count == 0) throw new DaapiException("The company file has no customers; run create-invoice first.");
+    var customerId = await Env.CustomerIdAsync(client);
     var line = await Env.SampleLineAsync(client, "Async example");
 
     var handle = await client.Qbd.Invoices.Enqueue.CreateAsync(
-        new InvoiceCreateInput { CustomerId = customers.Data[0].Id, Memo = $"Async example {runId}", Lines = new[] { line } },
+        new InvoiceCreateInput { CustomerId = customerId, Memo = $"Async example {runId}", Lines = new[] { line } },
         new RequestOptions { IdempotencyKey = $"example-{runId}-async-invoice", QueueTtl = TimeSpan.FromHours(1) });
     Console.WriteLine($"Queued request {handle.Id}: status {handle.Request.Status}, waiting reason {handle.Request.WaitingReason ?? "-"}, queue position {handle.Request.QueuePosition?.ToString() ?? "-"}");
 
@@ -38,6 +37,8 @@ return await Env.Run(async () =>
     {
         var invoice = await handle.WaitAsync(TimeSpan.FromMinutes(2));
         Console.WriteLine($"Request {handle.Id} succeeded: invoice {invoice.RefNumber} ({invoice.Id}), subtotal {invoice.Subtotal}");
+        await client.Qbd.Invoices.VoidAsync(invoice.Id);
+        Console.WriteLine($"Voided {invoice.Id}.");
     }
     catch (RequestPendingException ex)
     {

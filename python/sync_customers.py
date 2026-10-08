@@ -1,7 +1,9 @@
 """sync-customers: auto-paginate every customer, 10 per page, and check that no ID repeats.
 
 --slow sleeps between pages past the cursor idle window (SLOW_SECONDS, default 15) to show
-CursorExpiredError with its progress fields, then resumes from an updated_after watermark.
+CursorExpiredError with its progress fields, then restarts the list and skips IDs it already has.
+It does not resume from last_updated_at: QuickBooks returns records in its own order, not by
+updated_at, so records not read yet can be older than the last one read.
 
 python sync_customers.py
 python sync_customers.py --slow
@@ -40,15 +42,16 @@ def main(slow: bool) -> None:
             print(f"  pages_served:    {error.pages_served}")
             print(f"  last_id:         {error.last_id}")
             print(f"  last_updated_at: {error.last_updated_at}")
-            if error.last_updated_at is None:
-                raise
-            print(f"Resuming with updated_after={error.last_updated_at} and skipping IDs already seen")
+            print(f"  request_id:      {error.request_id}")
+            # Restart the same query (an incremental sync would restart from its saved
+            # updated_after watermark) and skip the IDs already seen.
+            print("Restarting the list and skipping IDs already seen")
             resumed = 0
-            for customer in client.qbd.customers.list(limit=10, updated_after=error.last_updated_at):
+            for customer in client.qbd.customers.list(limit=10):
                 if customer.id not in seen:
                     seen.add(customer.id)
                     resumed += 1
-            print(f"Resumed run added {resumed} customers")
+            print(f"Restarted list added {resumed} customers")
     print(f"{len(seen)} customers, {duplicates} duplicate IDs")
     if duplicates:
         raise SystemExit("duplicate customer IDs")

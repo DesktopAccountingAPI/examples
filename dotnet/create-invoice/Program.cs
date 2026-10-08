@@ -3,7 +3,8 @@
 //
 //   dotnet run --project create-invoice [-- --run-id <id>]
 //
-// Running again with the same --run-id replays the same creates instead of making duplicates.
+// Running again with the same --run-id replays the same creates and void instead of making
+// duplicates, and reads the invoice's current revision before updating so it never sends a stale one.
 using DesktopAccountingApi.QuickBooksDesktop;
 using DesktopAccountingApi.QuickBooksDesktop.Models;
 using Examples;
@@ -32,13 +33,23 @@ return await Env.Run(async () =>
     var replayed = created.Headers.TryGetValue("Daapi-Idempotent-Replayed", out var r) && r == "true";
     Console.WriteLine($"Invoice {invoice.RefNumber}: {invoice.Id}, subtotal {invoice.Subtotal}{(replayed ? " (replayed: this run ID was used before)" : "")}");
 
-    var updated = await client.Qbd.Invoices.UpdateAsync(invoice.Id, new InvoiceUpdateInput
+    // A replayed create returns the invoice as it was created. Read the current revision: an update
+    // with an older RevisionNumber fails with 409 QBD_REVISION_NUMBER_STALE.
+    var current = await client.Qbd.Invoices.RetrieveAsync(invoice.Id);
+    if (current.RevisionNumber == invoice.RevisionNumber)
     {
-        RevisionNumber = invoice.RevisionNumber,
-        Memo = $"Memo updated by run {runId}",
-    });
-    Console.WriteLine($"Updated memo: \"{updated.Memo}\" (revision {updated.RevisionNumber})");
+        var updated = await client.Qbd.Invoices.UpdateAsync(invoice.Id, new InvoiceUpdateInput
+        {
+            RevisionNumber = current.RevisionNumber,
+            Memo = $"Memo updated by run {runId}",
+        });
+        Console.WriteLine($"Updated memo: \"{updated.Memo}\" (revision {updated.RevisionNumber})");
+    }
+    else
+    {
+        Console.WriteLine($"Skipped the update: an earlier run with this run ID already changed the invoice (revision {current.RevisionNumber})");
+    }
 
-    var voided = await client.Qbd.Invoices.VoidAsync(invoice.Id);
+    var voided = await client.Qbd.Invoices.VoidAsync(invoice.Id, new RequestOptions { IdempotencyKey = $"example-{runId}-void" });
     Console.WriteLine($"Voided invoice {voided.RefNumber} ({voided.Id}): voided={voided.Voided}");
 });

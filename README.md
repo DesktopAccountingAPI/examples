@@ -5,15 +5,15 @@ Runnable QuickBooks Desktop integrations built on the [Desktop Accounting API](h
 | Example | What it shows |
 | --- | --- |
 | `quickstart` | Health check of the end user's QuickBooks connection, then the first 10 invoices. |
-| `create-invoice` | Create a customer and an invoice with a fixed idempotency key, update the memo with the invoice's `revisionNumber`, void the invoice. |
+| `create-invoice` | Create a customer and an invoice with a fixed idempotency key, read the invoice's current `revisionNumber` and update the memo, void the invoice. Re-running with the same run ID replays instead of duplicating. |
 | `network-drop` | A create whose response is lost on the first attempt. The SDK retries with the same idempotency key and exactly one invoice exists afterwards. |
-| `sync-customers` | Auto-pagination over every customer, 10 per page. `--slow` waits past the cursor idle window to show `CursorExpiredError` with its progress fields and how to resume from an `updatedAfter` watermark. |
-| `async-webhooks` | An async-mode create returning a request handle, plus a small webhook receiver that verifies Standard Webhooks signatures with the SDK helper. |
-| `error-handling` | Typed errors: `code`, `userFacingMessage`, `fixes`, `docsUrl` and `requestId`. |
+| `sync-customers` | Auto-pagination over every customer, 10 per page. `--slow` waits past the cursor idle window to show `CursorExpiredError` with its progress fields and request ID, then restarts the list and skips the IDs it already has. |
+| `async-webhooks` | An async-mode create returning a request handle, then a void of the invoice, plus a small webhook receiver that verifies Standard Webhooks signatures with the SDK helper. |
+| `error-handling` | Typed errors: `code`, `userFacingMessage`, `fixes`, `docsUrl` and `requestId` for an unknown customer, plus the local errors for a malformed key and a missing end user. Exits 1 if a step gets a different error than the one it demonstrates. |
 
 ## Packages
 
-The examples install the released SDKs from their public registries, at version **0.2.1**:
+The examples install the released SDKs from their public registries, at version **0.3.0**:
 
 | Language | Folder | Package |
 | --- | --- | --- |
@@ -29,7 +29,7 @@ Each SDK's README documents its full API: [Node.js](https://github.com/DesktopAc
 You need:
 
 1. A secret key from the [dashboard](https://www.desktopaccountingapi.com/dashboard) (**API keys**). Use a test project and its `sk_test_...` key.
-2. An end user whose QuickBooks Desktop company file is connected through the Web Connector, and QuickBooks open on that computer. Use a sample or test company file: the examples create and void records.
+2. An end user whose QuickBooks Desktop company file is connected through the Web Connector, and QuickBooks open on that computer. Use a sample or test company file: the examples create invoices and void every invoice they create; `create-invoice` also creates one customer per run.
 3. The toolchains pinned in `mise.toml` (Node.js, Python with uv, .NET 8, Java 21 with Maven). With [mise](https://mise.jdx.dev): `mise install`. Other installs of the supported versions work too.
 
 Configuration comes from environment variables:
@@ -51,7 +51,7 @@ export DAAPI_SECRET_KEY="sk_test_..." DAAPI_END_USER_ID="eu_..."
 # Pick your language:
 (cd node && npm install && node quickstart.ts)                                   # Node.js 22.18+
 (cd python && python -m venv .venv && .venv/bin/pip install -r requirements.txt && .venv/bin/python quickstart.py)
-(cd dotnet && dotnet run --project quickstart -p:UseNuGetPackage=true)
+(cd dotnet && dotnet run --project quickstart)
 (cd java && mvn -q compile exec:java -Dexec.mainClass=examples.Quickstart)
 ```
 

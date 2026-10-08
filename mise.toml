@@ -49,8 +49,8 @@ shell = "bash -c"
 run = '''
 set -euo pipefail
 SDK_REPOS_DIR="${SDK_REPOS_DIR:-$PWD/sdk}"
-SDK_REPOS_DIR="$SDK_REPOS_DIR" dotnet build dotnet/examples.sln -c Release
-PORT=18472 DAAPI_WEBHOOK_SECRET=whsec_Y29uZm9ybWFuY2Utd2ViaG9vay1zZWNyZXQtMzJieXQ= dotnet run --project dotnet/async-webhooks -c Release --no-build -- --self-test
+SDK_REPOS_DIR="$SDK_REPOS_DIR" dotnet build dotnet/examples.sln -c Release -p:UseNuGetPackage=false
+PORT=18472 DAAPI_WEBHOOK_SECRET=whsec_Y29uZm9ybWFuY2Utd2ViaG9vay1zZWNyZXQtMzJieXQ= SDK_REPOS_DIR="$SDK_REPOS_DIR" dotnet run --project dotnet/async-webhooks -c Release --no-build -p:UseNuGetPackage=false -- --self-test
 '''
 
 [tasks.check]
