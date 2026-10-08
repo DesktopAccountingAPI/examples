@@ -13,7 +13,7 @@ Runnable QuickBooks Desktop integrations built on the [Desktop Accounting API](h
 
 ## Packages
 
-The examples install the released SDKs from their public registries, at version **0.3.0**:
+The examples install the released SDKs from their public registries, at version **0.4.0**:
 
 | Language | Folder | Package |
 | --- | --- | --- |
