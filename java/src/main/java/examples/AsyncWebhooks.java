@@ -4,11 +4,9 @@ import com.desktopaccountingapi.quickbooksdesktop.DesktopAccountingApiClient;
 import com.desktopaccountingapi.quickbooksdesktop.core.RequestHandle;
 import com.desktopaccountingapi.quickbooksdesktop.core.RequestOptions;
 import com.desktopaccountingapi.quickbooksdesktop.errors.WebhookVerificationException;
-import com.desktopaccountingapi.quickbooksdesktop.models.CustomerListParams;
 import com.desktopaccountingapi.quickbooksdesktop.models.Invoice;
 import com.desktopaccountingapi.quickbooksdesktop.models.InvoiceCreateInput;
 import com.desktopaccountingapi.quickbooksdesktop.models.InvoiceLineCreateInput;
-import com.desktopaccountingapi.quickbooksdesktop.models.ServiceItemListParams;
 import com.desktopaccountingapi.quickbooksdesktop.webhooks.WebhookEvent;
 import com.desktopaccountingapi.quickbooksdesktop.webhooks.Webhooks;
 import com.sun.net.httpserver.HttpExchange;
@@ -32,7 +30,7 @@ import java.util.List;
  * <ul>
  *   <li>No flag: enqueues an invoice create ({@code Prefer: respond-async}) for the first customer
  *       and service item (or DAAPI_CUSTOMER_ID / DAAPI_ITEM_ID), prints the request handle, waits on
- *       it and prints the result.
+ *       it, prints the result and voids the invoice.
  *   <li>{@code --receive}: runs a webhook receiver on PORT (default 8080) that verifies every
  *       delivery with DAAPI_WEBHOOK_SECRET and prints the event.
  *   <li>{@code --self-test}: starts the receiver, posts a locally signed sample event to it and exits.
@@ -53,25 +51,21 @@ public final class AsyncWebhooks {
             return;
         }
 
-        DesktopAccountingApiClient client = Env.client();
-        String runId = Env.runId(args);
-        String customerId = System.getenv("DAAPI_CUSTOMER_ID");
-        if (customerId == null || customerId.isEmpty()) {
-            customerId = client.qbd().customers().list(new CustomerListParams().limit(1)).firstPage().data().get(0).id();
-        }
-        String itemId = System.getenv("DAAPI_ITEM_ID");
-        if (itemId == null || itemId.isEmpty()) {
-            itemId = client.qbd().serviceItems().list(new ServiceItemListParams().limit(1)).firstPage().data().get(0).id();
-        }
-        InvoiceCreateInput input = new InvoiceCreateInput(customerId)
-            .memo("Async example, run " + runId)
-            .lines(List.of(new InvoiceLineCreateInput().itemId(itemId).quantity(1).rate(new BigDecimal("10.00"))));
-        RequestHandle<Invoice> handle = client.qbd().invoices().enqueue().create(input,
-            RequestOptions.builder().idempotencyKey("example-async-" + runId).queueTtl(Duration.ofHours(1)).build());
-        System.out.println("Queued request " + handle.id() + " (status " + handle.request().status() + ")");
-        System.out.println("Current status: " + handle.status().status());
-        Invoice invoice = handle.await(Duration.ofMinutes(5));
-        System.out.println("Request " + handle.id() + " succeeded: invoice " + invoice.id() + " ref " + invoice.refNumber() + " subtotal " + invoice.subtotal());
+        Env.run(() -> {
+            DesktopAccountingApiClient client = Env.client();
+            String runId = Env.runId(args);
+            InvoiceCreateInput input = new InvoiceCreateInput(Env.customerId(client))
+                .memo("Async example, run " + runId)
+                .lines(List.of(new InvoiceLineCreateInput().itemId(Env.itemId(client)).quantity(1).rate(new BigDecimal("10.00"))));
+            RequestHandle<Invoice> handle = client.qbd().invoices().enqueue().create(input,
+                RequestOptions.builder().idempotencyKey("example-async-" + runId).queueTtl(Duration.ofHours(1)).build());
+            System.out.println("Queued request " + handle.id() + " (status " + handle.request().status() + ")");
+            System.out.println("Current status: " + handle.status().status());
+            Invoice invoice = handle.await(Duration.ofMinutes(5));
+            System.out.println("Request " + handle.id() + " succeeded: invoice " + invoice.id() + " ref " + invoice.refNumber() + " subtotal " + invoice.subtotal());
+            client.qbd().invoices().voidTransaction(invoice.id());
+            System.out.println("Voided " + invoice.id() + ".");
+        });
     }
 
     private static void runReceiver(boolean selfTest) throws Exception {
@@ -111,7 +105,9 @@ public final class AsyncWebhooks {
         try {
             // HttpExchange headers are already a case-insensitive Map<String, List<String>>.
             WebhookEvent event = Webhooks.verify(body, exchange.getRequestHeaders(), secret);
-            System.out.println("Verified " + event.type() + " " + event.id() + " data.id=" + event.data().get("id") + " status=" + event.data().get("status"));
+            // webhook.test events carry no status; request events do.
+            Object eventStatus = event.data().get("status");
+            System.out.println("Verified " + event.type() + " " + event.id() + " data.id=" + event.data().get("id") + (eventStatus == null ? "" : " status=" + eventStatus));
             status = 204;
         } catch (WebhookVerificationException e) {
             System.out.println("Rejected delivery: " + e.getMessage());

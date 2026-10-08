@@ -3,7 +3,10 @@
 //   dotnet run --project sync-customers              fast: each page is requested well inside the cursor idle window
 //   dotnet run --project sync-customers -- --slow    sleeps past the cursor idle window after each page
 //                                                    (SLOW_PAGE_SECONDS, default 15) to provoke
-//                                                    CursorExpiredException, then resumes from a watermark
+//                                                    CursorExpiredException, then restarts the list and
+//                                                    skips IDs it already has. It does not resume from
+//                                                    LastUpdatedAt: QuickBooks returns records in its own
+//                                                    order, so unread records can be older than the last one.
 using DesktopAccountingApi.QuickBooksDesktop;
 using DesktopAccountingApi.QuickBooksDesktop.Models;
 using Examples;
@@ -41,14 +44,14 @@ return await Env.Run(async () =>
     {
         Console.WriteLine($"CursorExpiredException ({ex.Reason}): {ex.Message}");
         Console.WriteLine($"  itemsYielded={ex.ItemsYielded} pagesServed={ex.PagesServed} lastId={ex.LastId} lastUpdatedAt={ex.LastUpdatedAt}");
+        Console.WriteLine($"  requestId={ex.RequestId}");
         foreach (var fix in ex.Fixes) Console.WriteLine($"  fix ({fix.Actor}): {fix.Action}");
 
-        // Resume: records changed at or after the last processed record's updatedAt; skip IDs already seen.
+        // Restart the same query (an incremental sync would restart from its saved UpdatedAfter
+        // watermark) and skip the IDs already seen.
         var before = seen.Count;
-        var resumed = client.Qbd.Customers.ListAsync(new CustomerListParams { Limit = 10, UpdatedAfter = ex.LastUpdatedAt });
-        // Records processed before the expiry can come back after a watermark restart; the set skips them.
-        await foreach (var customer in resumed) seen.Add(customer.Id);
-        Console.WriteLine($"Resumed from updatedAfter={ex.LastUpdatedAt ?? "(start)"}: {seen.Count - before} more customers");
+        await foreach (var customer in client.Qbd.Customers.ListAsync(new CustomerListParams { Limit = 10 })) seen.Add(customer.Id);
+        Console.WriteLine($"Restarted the list: {seen.Count - before} more customers");
     }
 
     Console.WriteLine($"Total customers: {seen.Count}, duplicate IDs within one pass: {duplicates}");

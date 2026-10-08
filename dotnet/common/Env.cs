@@ -51,14 +51,28 @@ internal static class Env
         Console.Error.WriteLine($"  request ID: {ex.RequestId}");
     }
 
-    /// <summary>One invoice line: the first active service item, or a description-only line when the company file has none.</summary>
+    /// <summary>The customer for invoices: DAAPI_CUSTOMER_ID, else the first active customer.</summary>
+    public static async Task<string> CustomerIdAsync(DesktopAccountingApiClient client)
+    {
+        if (Optional("DAAPI_CUSTOMER_ID") is { } id) return id;
+        var customers = await client.Qbd.Customers.ListAsync(new CustomerListParams { Limit = 1, Status = ActiveStatus.Active }).GetFirstPageAsync();
+        if (customers.Data.Count == 0) throw new DaapiException("The company file needs an active customer (or set DAAPI_CUSTOMER_ID).");
+        Console.WriteLine($"Using customer {customers.Data[0].FullName} ({customers.Data[0].Id})");
+        return customers.Data[0].Id;
+    }
+
+    /// <summary>One invoice line for the service item in DAAPI_ITEM_ID, else the first active service item.</summary>
     public static async Task<InvoiceLineCreateInput> SampleLineAsync(DesktopAccountingApiClient client, string description)
     {
-        var items = await client.Qbd.ServiceItems.ListAsync(new ServiceItemListParams { Limit = 1 }).GetFirstPageAsync();
-        if (items.Data.Count == 0) return new InvoiceLineCreateInput { Description = description };
-        var item = items.Data[0];
-        Console.WriteLine($"Using service item {item.FullName} ({item.Id})");
-        return new InvoiceLineCreateInput { ItemId = item.Id, Description = description, Quantity = 2, Rate = 52.75m };
+        var itemId = Optional("DAAPI_ITEM_ID");
+        if (itemId is null)
+        {
+            var items = await client.Qbd.ServiceItems.ListAsync(new ServiceItemListParams { Limit = 1, Status = ActiveStatus.Active }).GetFirstPageAsync();
+            if (items.Data.Count == 0) throw new DaapiException("The company file needs an active service item (or set DAAPI_ITEM_ID).");
+            itemId = items.Data[0].Id;
+            Console.WriteLine($"Using service item {items.Data[0].FullName} ({itemId})");
+        }
+        return new InvoiceLineCreateInput { ItemId = itemId, Description = description, Quantity = 2, Rate = 52.75m };
     }
 
     /// <summary>A short ID for this run, used in names and idempotency keys. Pass --run-id to repeat a run.</summary>

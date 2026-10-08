@@ -4,7 +4,9 @@
 //   node sync-customers.ts --slow          # sleep SLOW_SECONDS (default 15) per page to let the cursor expire
 //
 // In --slow mode the cursor's idle window passes, the iteration throws CursorExpiredError with its
-// progress fields, and the example resumes from an updatedAfter watermark, skipping IDs it already has.
+// progress fields, and the example restarts the list, skipping IDs it already has. It does not
+// resume from lastUpdatedAt: QuickBooks returns records in its own order, not by updatedAt, so
+// records not read yet can be older than the last one read.
 
 import { setTimeout as sleep } from "node:timers/promises";
 import { CursorExpiredError, type Customer } from "@desktopaccountingapi/quickbooks-desktop";
@@ -44,12 +46,12 @@ if (!slow) {
     console.log(`  lastId:        ${err.lastId}`);
     console.log(`  lastUpdatedAt: ${err.lastUpdatedAt}`);
     console.log(`  requestId:     ${err.requestId}`);
-    // Resume: everything changed at or after the watermark, skipping what we already have.
+    // Restart the same query (an incremental sync would restart from its saved updatedAfter
+    // watermark) and skip what we already have.
     const before = seen.size;
-    const watermark = err.lastUpdatedAt ?? undefined;
-    for await (const customer of client.qbd.customers.list({ limit: 10, ...(watermark ? { updatedAfter: watermark } : {}) })) {
+    for await (const customer of client.qbd.customers.list({ limit: 10 })) {
       if (!seen.has(customer.id)) take(customer);
     }
-    console.log(`Resumed from updatedAfter=${watermark ?? "(start)"}: ${seen.size - before} more customers, ${seen.size} in total.`);
+    console.log(`Restarted the list: ${seen.size - before} more customers, ${seen.size} in total.`);
   }
 }

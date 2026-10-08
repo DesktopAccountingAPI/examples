@@ -13,7 +13,9 @@ const SAMPLE_SECRET = "whsec_c2VsZi10ZXN0LXNlY3JldC1ub3QtZm9yLXByb2R1Y3Rpb24=";
 
 function describe(event: WebhookEvent): string {
   const data = event.data;
-  return `${event.type} ${event.id} at ${event.timestamp}: ${String(data["objectType"] ?? "")} ${String(data["id"] ?? "")} status=${String(data["status"] ?? "")}`;
+  // webhook.test events carry no status; request events do.
+  const status = data["status"] === undefined ? "" : ` status=${String(data["status"])}`;
+  return `${event.type} ${event.id} at ${event.timestamp}: ${String(data["objectType"] ?? "")} ${String(data["id"] ?? "")}${status}`;
 }
 
 if (process.argv.includes("--self-test")) {

@@ -1,6 +1,7 @@
 // network-drop: the first attempt of an invoice create reaches the API, but the response is
 // "lost" (the transport throws after the request was sent). The SDK retries with the same
-// Idempotency-Key, the API replays the stored result, and exactly one invoice exists.
+// Idempotency-Key, the API replays the stored result, and exactly one invoice exists. The invoice
+// is voided at the end.
 using System.Net.Http;
 using DesktopAccountingApi.QuickBooksDesktop.Models;
 using Examples;
@@ -11,23 +12,30 @@ return await Env.Run(async () =>
     var drop = new DropFirstResponseHandler { InnerHandler = new HttpClientHandler() };
     using var client = Env.Client(drop);
 
-    var customer = await client.Qbd.Customers.CreateAsync(new CustomerCreateInput { Name = $"DAAPI Network Drop {runId}" });
-    Console.WriteLine($"Customer {customer.Name}: {customer.Id}");
+    var customerId = await Env.CustomerIdAsync(client);
     var line = await Env.SampleLineAsync(client, "Network drop example");
+    // A reference number unique to this run, to count the invoices the create produced.
+    var digits = runId.Replace("-", "", StringComparison.Ordinal);
+    var refNumber = "ND" + digits.Substring(Math.Max(0, digits.Length - 9));
 
     drop.Armed = true;
     var response = await client.Qbd.Invoices.CreateWithResponseAsync(new InvoiceCreateInput
     {
-        CustomerId = customer.Id,
-        Memo = "Created by the .NET network-drop example",
+        CustomerId = customerId,
+        RefNumber = refNumber,
+        Memo = $"Created by the .NET network-drop example, run {runId}",
         Lines = new[] { line },
     });
+    drop.Armed = false;
     Console.WriteLine($"Idempotency-Key on each attempt: {string.Join(", ", drop.Keys)}");
     Console.WriteLine($"Invoice {response.Data.RefNumber}: {response.Data.Id} (replayed: {(response.Headers.TryGetValue("Daapi-Idempotent-Replayed", out var r) ? r : "false")})");
 
-    var invoices = await client.Qbd.Invoices.ListAsync(new InvoiceListParams { CustomerIds = new[] { customer.Id }, IncludeLineItems = false }).ListAllAsync();
-    Console.WriteLine($"Invoices for this customer: {invoices.Count} (expected 1)");
+    var invoices = await client.Qbd.Invoices.ListAsync(new InvoiceListParams { RefNumbers = new[] { refNumber } }).ListAllAsync();
+    Console.WriteLine($"Invoices with ref {refNumber}: {invoices.Count} (expected 1)");
     if (invoices.Count != 1) throw new InvalidOperationException("Expected exactly one invoice.");
+
+    var voided = await client.Qbd.Invoices.VoidAsync(response.Data.Id);
+    Console.WriteLine($"Voided invoice {voided.RefNumber} ({voided.Id}). Exactly one invoice was created.");
 });
 
 /// <summary>Sends the first write to the API, then throws as if the connection dropped before the response arrived.</summary>

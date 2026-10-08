@@ -2,6 +2,8 @@
 update the invoice memo, then void it.
 
 python create_invoice.py        # RUN_ID=<id> repeats a run: the same idempotency keys replay instead of duplicating
+
+A rerun reads the invoice's current revision_number before updating, so it never sends a stale one.
 """
 
 from __future__ import annotations
@@ -45,14 +47,20 @@ def main() -> None:
         )
         print(f"Invoice {invoice.id}: ref {invoice.ref_number}, subtotal {invoice.subtotal}")
 
-        updated = client.qbd.invoices.update(
-            invoice.id,
-            revision_number=invoice.revision_number,
-            memo=f"create-invoice example {run} (updated)",
-        )
-        print(f"Updated memo: {updated.memo!r} (revision {updated.revision_number})")
+        # A replayed create returns the invoice as it was created. Read the current revision: an
+        # update with an older revision_number fails with 409 QBD_REVISION_NUMBER_STALE.
+        current = client.qbd.invoices.retrieve(invoice.id)
+        if current.revision_number == invoice.revision_number:
+            updated = client.qbd.invoices.update(
+                invoice.id,
+                revision_number=current.revision_number,
+                memo=f"create-invoice example {run} (updated)",
+            )
+            print(f"Updated memo: {updated.memo!r} (revision {updated.revision_number})")
+        else:
+            print(f"Skipped the update: an earlier run with this run ID already changed the invoice (revision {current.revision_number})")
 
-        voided = client.qbd.invoices.void(invoice.id)
+        voided = client.qbd.invoices.void(invoice.id, idempotency_key=f"example-{run}-void")
         print(f"Voided invoice {voided.id} (ref {voided.ref_number}): {voided.voided}")
 
 
