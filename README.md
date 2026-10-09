@@ -13,7 +13,7 @@ Runnable QuickBooks Desktop integrations built on the [Desktop Accounting API](h
 
 ## Packages
 
-The examples install the released SDKs from their public registries, at version **0.5.1**:
+The examples install the released SDKs from their public registries, at version **0.5.2**:
 
 | Language | Folder | Package |
 | --- | --- | --- |
@@ -53,6 +53,16 @@ export DAAPI_SECRET_KEY="sk_test_..." DAAPI_END_USER_ID="eu_..."
 (cd python && python -m venv .venv && .venv/bin/pip install -r requirements.txt && .venv/bin/python quickstart.py)
 (cd dotnet && dotnet run --project quickstart)
 (cd java && mvn -q compile exec:java -Dexec.mainClass=examples.Quickstart)
+```
+
+On Windows, the virtual environment keeps its programs in `.venv\Scripts\` instead of `.venv/bin/`. The Python quickstart in PowerShell:
+
+```powershell
+$env:DAAPI_SECRET_KEY = "sk_test_..."; $env:DAAPI_END_USER_ID = "eu_..."
+cd python
+python -m venv .venv
+.venv\Scripts\pip install -r requirements.txt
+.venv\Scripts\python quickstart.py
 ```
 
 Each language folder's README lists every example's run command and options.

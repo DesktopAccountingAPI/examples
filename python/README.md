@@ -22,7 +22,7 @@ The examples CI uses the SDK repository checked out at `$SDK_REPOS_DIR/quickbook
 
 ```sh
 cd python
-python -m venv .venv && . .venv/bin/activate
+python -m venv .venv && . .venv/bin/activate      # Windows: .venv\Scripts\activate
 pip install "${SDK_REPOS_DIR:-../sdk}/quickbooks-desktop-python"
 ```
 
