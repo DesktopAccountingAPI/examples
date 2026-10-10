@@ -33,7 +33,7 @@ The examples create, update and void invoices; `create-invoice` also creates one
 
 `Directory.Build.props` decides how the examples reference the SDK:
 
-- Default: the released `DesktopAccountingAPI.QuickBooksDesktop` package from NuGet, version 0.5.3. `-p:DaapiPackageVersion=<version>` picks another version.
+- Default: the released `DesktopAccountingAPI.QuickBooksDesktop` package from NuGet, version 0.5.4. `-p:DaapiPackageVersion=<version>` picks another version.
 - `-p:UseNuGetPackage=false` (for SDK development): a project reference to `$(SDK_REPOS_DIR)/quickbooks-desktop-dotnet/src/DesktopAccountingApi.QuickBooksDesktop/DesktopAccountingApi.QuickBooksDesktop.csproj`. Without `SDK_REPOS_DIR` the path is `../sdk/quickbooks-desktop-dotnet` relative to this folder. `-p:SdkReposDir=/path` overrides both.
 
 ## Build
