@@ -33,7 +33,8 @@ import java.util.List;
  *       it, prints the result and voids the invoice.
  *   <li>{@code --receive}: runs a webhook receiver on PORT (default 8080) that verifies every
  *       delivery with DAAPI_WEBHOOK_SECRET and prints the event.
- *   <li>{@code --self-test}: starts the receiver, posts a locally signed sample event to it and exits.
+ *   <li>{@code --self-test}: starts the receiver on an ephemeral loopback port (PORT is ignored),
+ *       posts a locally signed sample event to it and exits.
  * </ul>
  */
 public final class AsyncWebhooks {
@@ -70,10 +71,14 @@ public final class AsyncWebhooks {
 
     private static void runReceiver(boolean selfTest) throws Exception {
         String secret = Env.require("DAAPI_WEBHOOK_SECRET");
-        int port = Integer.parseInt(System.getenv().getOrDefault("PORT", "8080"));
-        HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
+        // The self-test binds an ephemeral port (0) on 127.0.0.1, the address it posts to, so concurrent
+        // runs never collide and an IPv6-preferring JVM still reaches it.
+        HttpServer server = selfTest
+            ? HttpServer.create(new InetSocketAddress("127.0.0.1", 0), 0)
+            : HttpServer.create(new InetSocketAddress(Integer.parseInt(System.getenv().getOrDefault("PORT", "8080"))), 0);
         server.createContext("/", exchange -> handle(exchange, secret));
         server.start();
+        int port = server.getAddress().getPort();
         System.out.println("Webhook receiver listening on http://localhost:" + port + "/");
         if (!selfTest) return; // keeps running until the process is stopped
 
