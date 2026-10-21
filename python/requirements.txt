@@ -1,1 +1,1 @@
-desktopaccountingapi-quickbooks-desktop==0.9.0
+desktopaccountingapi-quickbooks-desktop==0.9.1
